@@ -26,7 +26,7 @@ MINUTOS_POR_ITEM = 0.15
 # TIEMPO_FINAL_SIMULACION = 1051200 #2 años
 # TIEMPO_FINAL_SIMULACION = 525600 #1 año
 TIEMPO_FINAL_SIMULACION = 262800 #1/2 año
-# TIEMPO_FINAL_SIMULACION = 100
+# TIEMPO_FINAL_SIMULACION = 1000
 
 
 
@@ -64,7 +64,15 @@ def ejecutar_simulacion():
     atendidosB = 0
 
     while t < TIEMPO_FINAL_SIMULACION:
-        
+        a=0
+        if(tpsa != sys.maxsize):
+            a+=1
+        if(tpsb != sys.maxsize):
+            a+=1
+        test = ns - a + atendidosA + atendidosB
+
+        if(nt != test):
+            print(f"HAY ALGO RARO nt:{nt} sum: {test} ns: {ns} a:{atendidosA}  b:{atendidosB}") 
        
         if(tpll <= tpsa and tpll <= tpsb):
             llegada()
@@ -104,6 +112,7 @@ def salida_por_a():
     global t
     global itoa
     global sps
+    # print("Salida a")
 
     sps += (tpsa - t) * ns
     t = tpsa
@@ -124,7 +133,7 @@ def salida_por_a():
 
 
 def atender_caja_a():
-    # print("Lo atiendo en la caja a")
+    # print(f"Atiendo a {ns}")
     global tpsa
     global t
     global sta
@@ -143,6 +152,7 @@ def salida_por_b():
     global itob
     global sps
     global cant_personas_apertura_b
+    # print("Salida b")
 
     sps += (tpsb - t) * ns
     t = tpsb
@@ -165,6 +175,7 @@ def atender_caja_b():
     global sta
     global sttb
     global atendidosB
+    # print(f"Atiendo b {ns}")
     
     # generar el ta
     ta = tiempo_de_atencion()
@@ -185,6 +196,7 @@ def llegada():
     global nt
     global cant_personas_apertura_b
     global rotacionCaja
+    # print("Llegada")
 
     sps += (tpll - t) * ns
     t = tpll
@@ -230,8 +242,9 @@ def llegada():
         return
 
     # Si se llego al limite de personas para abrir la otra caja atiendo por ahi
-    if(ns == cant_personas_apertura_b):
+    if(ns == cant_personas_apertura_b and tpsb == sys.maxsize):
         stob += t - itob
+        # print("Atiendo por llegada")
         atender_caja_b()
         return
 
@@ -264,6 +277,8 @@ def main():
         cant_personas_apertura_b = i + 1 
         print(f"Simulando apertura a partir de {i + 1} personas")
         ejecutar_simulacion()
+
+    
         
 
 
