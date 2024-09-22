@@ -44,6 +44,8 @@ def ejecutar_simulacion():
     global nt
     global sta
     global sttb
+    global atendidosA
+    global atendidosB
 
     t = 0
     tpll = 0
@@ -58,6 +60,8 @@ def ejecutar_simulacion():
     nt = 0
     sta = 0
     sttb = 0
+    atendidosA = 0
+    atendidosB = 0
 
     while t < TIEMPO_FINAL_SIMULACION:
         
@@ -223,12 +227,13 @@ def llegada():
     if(ns == 2 and tpsb != sys.maxsize):
         stoa += t - itoa
         atender_caja_a()
-
+        return
 
     # Si se llego al limite de personas para abrir la otra caja atiendo por ahi
     if(ns == cant_personas_apertura_b):
         stob += t - itob
         atender_caja_b()
+        return
 
     return
 
