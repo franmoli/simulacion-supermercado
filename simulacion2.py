@@ -6,11 +6,14 @@ from scipy import stats
 
 t = 0
 tpll = 0
+tps = []
 tpsa = sys.maxsize
 tpsb = sys.maxsize
 ns = 0
+ito = []
 itoa = 0
 itob = 0
+sto = []
 stoa = 0
 stob = 0
 sps = 0
@@ -18,6 +21,7 @@ nt = 0
 sta = 0
 sttb = 0
 rotacionCaja = False
+atendidos = []
 atendidosA = 0
 atendidosB = 0
 maxItems = 200
@@ -26,9 +30,9 @@ minTLlegada = 100
 maxTLlegada = 0
 MAX_ITEMS_POR_TICKET = 200
 MIN_INTERVALO_ARRIBO = 0.1
-
-
+ultimo_puesto = 0
 cant_personas_apertura_b = 1
+cant_de_cajas = 3
 MINUTOS_POR_ITEM = 0.15
 # TIEMPO_FINAL_SIMULACION = 1051200 #2 años
 # TIEMPO_FINAL_SIMULACION = 525600 #1 año
@@ -38,82 +42,127 @@ TIEMPO_FINAL_SIMULACION = 262800 #1/2 año
 
 
 def ejecutar_simulacion():
-    global t
-    global tpll
-    global tpsa
-    global tpsb
-    global ns
-    global itoa
-    global itob
-    global stoa
-    global stob
-    global sps
-    global nt
-    global sta
-    global sttb
-    global atendidosA
-    global atendidosB
-
-    t = 0
-    tpll = 0
-    tpsa = sys.maxsize
-    tpsb = sys.maxsize
-    ns = 0
-    itoa = 0
-    itob = 0
-    stoa = 0
-    stob = 0
-    sps = 0
-    nt = 0
-    sta = 0
-    sttb = 0
-    atendidosA = 0
-    atendidosB = 0
+    condiciones_iniciales()
 
     while t < TIEMPO_FINAL_SIMULACION:
-        a=0
-        if(tpsa != sys.maxsize):
-            a+=1
-        if(tpsb != sys.maxsize):
-            a+=1
-        test = ns - a + atendidosA + atendidosB
-
-        if(nt != test):
-            print(f"HAY ALGO RARO nt:{nt} sum: {test} ns: {ns} a:{atendidosA}  b:{atendidosB}") 
+    
+        caja = buscar_menos_tps()
        
-        if(tpll <= tpsa and tpll <= tpsb):
+        if(tpll <= tps[caja]):
             llegada()
             continue
-
-        if(tpsa <= tpsb):
-            salida_por_a()
-            continue
         else:
-            salida_por_b()
-            continue
+            salida(caja)
         
     calcular_resultados()
 
 def calcular_resultados():
-    ptoa = stoa * 100 / t
-    ptob = stob * 100 / t
+    print("Calculo de resultados")
+    for i in range(cant_de_cajas):
+        pto = sto[i] * 100 / t
+        print(f"                Pto{i}: {round(pto,2)}%")
     pps = sps / nt
     pec = (sps - sta) / nt
-    ptb = sttb * 100 / t
-    print(f"""Calculo de resultados: 
-                ptob : {round(ptob,2)}% 
-                ptoa: {round(ptoa, 2)}%
-                gente total: {nt} 
-                tiempo trabajado por b: {round(ptb,2)}%
+    # ptb = sttb * 100 / t
+    print(f"""  gente total: {nt} 
                 permanencia en sistema {round(pps,2)} min 
                 espera en cola {round(pec,2)} min
-                atendidos {atendidosA} + {atendidosB} = {atendidosA + atendidosB}
+                atendidos {sum(atendidos)}
                 ns: {ns}
                 max items: {maxItems}
                 min items: {minItems}
                 max intervalo: {maxTLlegada}
                 min intervalo: {minTLlegada}
                 """)
+
+# Devuelve la caja con menor tps
+def buscar_menos_tps():
+    caja = 0
+    for i in range(cant_de_cajas):
+        if(tps[i] < tps[caja]):
+            caja = i
+    return caja
+
+def condiciones_iniciales():
+    global t
+    global tpll
+    global tps
+    global ito
+    global sto
+    global ns
+    global sps
+    global nt
+    global sta
+    global sttb
+    global atendidos
+    global maxItems
+    global minItems
+    global maxTLlegada
+    global minTLlegada
+    global ultimo_puesto
+
+    t = 0
+    tpll = 0
+    tps = []
+    ns = 0
+    ito = []
+    sto = []
+    sps = 0
+    nt = 0
+    sta = 0
+    sttb = 0
+    atendidos = []
+    maxItems = 200
+    minItems = 100
+    minTLlegada = 100
+    maxTLlegada = 0
+    ultimo_puesto = 0
+
+    for i in range(cant_de_cajas):
+        tps.append(sys.maxsize)
+        ito.append(0)
+        sto.append(0)
+        atendidos.append(0)
+
+
+def salida(caja):
+     # La caja a es fija
+    global tps
+    global ns
+    global t
+    global ito
+    global sps
+    # print("Salida a")
+
+    sps += (tps[caja] - t) * ns
+    t = tps[caja]
+    ns -= 1
+
+    # sale de a-- ns = 1 --> o esta libre o lo atiende b 
+    # si hay 2 o mas --> hay uno en cola y lo atiendo
+
+    if(ns >= cant_de_cajas):
+        # hay uno en el sistema y no lo atiende b, o hay uno en cola
+        atender(caja)
+    else:
+        # no hay nadie mas, o hay uno y lo atiende B
+        ito[caja] = t
+        tps[caja] = sys.maxsize
+        return
+    
+
+def atender(caja):
+     # print(f"Atiendo a {ns}")
+    global tps
+    global t
+    global sta
+    global atendidos
+
+    # generar el ta
+    ta = tiempo_de_atencion()
+    tps[caja] = t + ta
+    sta += ta
+    atendidos[caja] += 1
 
 
 def salida_por_a():
@@ -186,7 +235,7 @@ def atender_caja_b():
     global sta
     global sttb
     global atendidosB
-    # print(f"Atiendo b {ns}")
+    print(f"Atiendo b {ns}")
     
     # generar el ta
     ta = tiempo_de_atencion()
@@ -194,6 +243,16 @@ def atender_caja_b():
     sta += ta
     sttb += ta
     atendidosB += 1
+
+def buscar_puesto():
+    global ultimo_puesto
+
+    ultimo_puesto +=1
+    if(ultimo_puesto >= cant_de_cajas):
+        ultimo_puesto = 0
+    if(tps[ultimo_puesto] != sys.maxsize):
+        return buscar_puesto()
+    return ultimo_puesto
 
 def llegada():
     global t
@@ -216,48 +275,11 @@ def llegada():
     ns += 1
     nt += 1
 
-    # Caso con 2 cajas fijas
-    if(cant_personas_apertura_b == 1): 
-        # si los dos estan libres al mismo tiempo le mando uno y uno
-        if(tpsa == sys.maxsize and tpsb == sys.maxsize):
-            if(rotacionCaja):
-                stob += t - itob
-                atender_caja_b()
-            else:
-                stoa += t - itoa
-                atender_caja_a()
-            rotacionCaja = not rotacionCaja
-            return
-            
-            
-        # sino al primeor que se libere le mando
-        if(tpsb == sys.maxsize):
-            stob += t - itob
-            atender_caja_b()
-        else:
-            if(tpsa == sys.maxsize):
-                stoa += t - itoa
-                atender_caja_a()
-        return
-
-    #si solo hay uno en la fila 
-    if(ns == 1):
-        stoa += t - itoa
-        atender_caja_a()
-        return
-    
-    # Si hay uno atendiendose en caja b, el siguiente en llegar atiendo por caja a
-    if(ns == 2 and tpsb != sys.maxsize):
-        stoa += t - itoa
-        atender_caja_a()
-        return
-
-    # Si se llego al limite de personas para abrir la otra caja atiendo por ahi
-    if(ns == cant_personas_apertura_b and tpsb == sys.maxsize):
-        stob += t - itob
-        # print("Atiendo por llegada")
-        atender_caja_b()
-        return
+    # considerando a todas las cajas como fijas
+    if(ns <= cant_de_cajas):
+        caja = buscar_puesto()
+        sto[caja] += t - ito[caja]
+        atender(caja)
 
     return
 
@@ -304,12 +326,12 @@ def intervalo_entre_arribos():
 
 
 def main():
-    global cant_personas_apertura_b
+    global cant_de_cajas
 
     print("Iniciando simulacion...")
-    for i in range(10):
-        cant_personas_apertura_b = i + 1 
-        print(f"Simulando apertura a partir de {i + 1} personas")
+    for i in range(3):
+        cant_de_cajas = i + 1 
+        print(f"Simulando con {i + 1} cajas")
         ejecutar_simulacion()
     
     # cant_personas_apertura_b = 100
